@@ -1,0 +1,68 @@
+# SmartBorrow AI Platform - Cursor Rules for AI Assistance
+
+## Project Context
+You are working on SmartBorrow, an AI-powered student loan intelligence platform built for AIE7 certification. This project demonstrates advanced RAG, multi-agent systems, evaluation frameworks, and production deployment.
+
+## Code Style Preferences
+- Use type hints for all function parameters and return values
+- Follow PEP 8 style guidelines with Black formatting
+- Write comprehensive docstrings for all modules, classes, and functions
+- Use Pydantic models for data validation
+- Prefer async/await for I/O operations
+- Use structured logging with appropriate log levels
+
+## Architecture Patterns
+- Follow the repository pattern for data access
+- Use dependency injection for configuration and services
+- Implement proper error handling with custom exceptions
+- Use factory patterns for model and agent creation
+- Follow SOLID principles in class design
+
+## AIE7 Integration Requirements
+- Always integrate LangSmith tracing for LangChain operations
+- Use RAGAS evaluation patterns for RAG system assessment
+- Implement proper state management for multi-agent workflows
+- Follow production-ready patterns with monitoring and logging
+- Use environment-based configuration management
+
+## Financial Domain Considerations
+- Validate all financial calculations and amounts
+- Implement proper error handling for financial data
+- Use appropriate data types (Decimal) for monetary values
+- Follow compliance considerations for financial data handling
+- Implement audit trails for financial decisions
+
+## Testing Requirements
+- Write unit tests for all business logic
+- Include integration tests for API endpoints
+- Add evaluation tests for AI components
+- Use pytest fixtures for test data
+- Mock external API calls in tests
+
+## Documentation Standards  
+- Include examples in all docstrings
+- Maintain API documentation with OpenAPI/Swagger
+- Document all configuration options
+- Provide troubleshooting guides for common issues
+- Include performance considerations in documentation
+
+## Development Workflow
+- Use feature branches for all development
+- Include type checking with mypy
+- Run code formatting with Black and isort
+- Validate with flake8 linting
+- Include comprehensive commit messages
+
+## Security Considerations
+- Never commit API keys or secrets
+- Use environment variables for all configuration
+- Implement proper input validation
+- Follow secure coding practices for financial data
+- Use HTTPS for all external API communications
+
+When suggesting code improvements or new features, always consider:
+1. How does this fit into the AIE7 learning objectives?
+2. Does this follow production-ready patterns?
+3. Is this properly tested and documented?
+4. Does this maintain financial data security?
+5. Is this consistent with the existing architecture?
