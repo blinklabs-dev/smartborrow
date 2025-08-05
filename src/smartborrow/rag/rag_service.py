@@ -34,7 +34,7 @@ class RAGService:
         # Initialize components
         self.document_loader = SmartBorrowDocumentLoader(processed_data_path)
         self.vectorstore = SmartBorrowVectorStore(vectorstore_path)
-        self.rag_chain = SmartBorrowRAGChain(model_name)
+        self.rag_chain = SmartBorrowRAGChain()
         self.retriever = None
         
         # Advanced retrieval components - initialize lazily to avoid circular import

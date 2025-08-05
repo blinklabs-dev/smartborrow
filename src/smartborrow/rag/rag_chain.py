@@ -14,6 +14,7 @@ from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.schema.runnable import RunnablePassthrough
 from langchain.schema.output_parser import StrOutputParser
 from dotenv import load_dotenv
+from langchain.chains import LLMChain
 
 # Load environment variables
 load_dotenv()
@@ -23,87 +24,69 @@ logger = logging.getLogger(__name__)
 class SmartBorrowRAGChain:
     """RAG chain for SmartBorrow question answering"""
     
-    def __init__(self, 
-                 model_name: str = "gpt-3.5-turbo",
-                 temperature: float = 0.1,
-                 max_tokens: int = 1000) -> None:
-        self.model_name = model_name
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        
-        # Initialize LLM with timeout and retry settings
+    def __init__(self):
+        """Initialize RAG chain with comprehensive prompts"""
         self.llm = ChatOpenAI(
-            model_name=model_name,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            openai_api_key=os.getenv("OPENAI_API_KEY"),
-            request_timeout=30,  # 30 second timeout
-            max_retries=2  # Retry failed requests
+            model_name=os.getenv("OPENAI_MODEL_NAME", "gpt-3.5-turbo"),
+            temperature=0.1,
+            openai_api_key=os.getenv("OPENAI_API_KEY")
         )
         
-        # Create prompts
-        self.qa_prompt = self._create_qa_prompt()
-        self.qa_with_sources_prompt = self._create_qa_with_sources_prompt()
-        self.numerical_context_prompt = self._create_numerical_context_prompt()
-        
-        # Create chains using modern LCEL approach
+        # Initialize chains with comprehensive prompts
         self.qa_chain = self._create_qa_chain()
         self.qa_with_sources_chain = self._create_qa_with_sources_chain()
+        
+        # Initialize other components
+        self.numerical_context_chain = self._create_numerical_context_chain()
+        self.confidence_chain = self._create_confidence_chain()
     
-    def _create_qa_prompt(self) -> ChatPromptTemplate:
-        """Create QA prompt template"""
-        template = """You are a helpful assistant for SmartBorrow, a student loan and financial aid information system. 
-You have access to comprehensive information about federal student loans, Pell Grants, application processes, and common issues.
+    def _create_qa_prompt(self, question: str, context: str) -> str:
+        """Create an optimized QA prompt for best performance/quality balance"""
+        return f"""You are a financial aid expert. Answer this question clearly and accurately:
 
-Use the following context to answer the question. If you cannot find the answer in the context, say so.
-
-IMPORTANT: 
-- Provide specific, concrete answers with actual numbers and values
-- Do NOT use template placeholders like {{rate}}, {{amount}}, {{year}}, etc.
-- If specific numbers are not available in the context, say "The specific rate/amount is not provided in the available information"
-- Always give complete, actionable answers
-
-Context:
-{context}
-
+Context: {context}
 Question: {question}
 
-Answer the question based on the context provided. Be specific and accurate. If the question asks for numerical data (like amounts, rates, limits), provide the exact values from the context. If exact values are not available, clearly state what information is available and what is not.
+Provide a clear, well-formatted answer with:
+- Direct response to the question
+- Key details and requirements
+- Important notes if relevant
+
+IMPORTANT FORMATTING:
+- Use bullet points (•) for lists with each bullet on a new line
+- Use bold text (**text**) for important information
+- Add line breaks between sections
+- Structure your response with clear paragraphs
+- Make it easy to read and scan
+- End with "**Sources:**" in bold on a new line
+
+Avoid template placeholders like {{rate}}. Use actual information or say "not specified".
 
 Answer:"""
 
-        return ChatPromptTemplate.from_template(template)
-    
-    def _create_qa_with_sources_prompt(self) -> ChatPromptTemplate:
-        """Create QA with sources prompt template"""
-        template = """You are a helpful assistant for SmartBorrow, a student loan and financial aid information system.
+    def _create_qa_with_sources_prompt(self, question: str, context: str) -> str:
+        """Create an optimized QA prompt with sources for best performance/quality balance"""
+        return f"""You are a financial aid expert. Answer this question clearly and accurately:
 
-Use the following context to answer the question. For complex questions, break them down and address each part systematically.
-
-IMPORTANT: 
-- Provide specific, concrete answers with actual numbers and values
-- Do NOT use template placeholders like {{rate}}, {{amount}}, {{year}}, etc.
-- If specific numbers are not available in the context, say "The specific rate/amount is not provided in the available information"
-- Always give complete, actionable answers
-
-Context:
-{context}
-
+Context: {context}
 Question: {question}
 
-Instructions:
-1. For complex questions, break them down into parts and address each systematically
-2. Use specific information from the context to answer each part
-3. If the context doesn't contain enough information, acknowledge this but provide what you can
-4. For multi-part questions, structure your answer clearly with sections
-5. If the question asks for numerical data, provide exact values from the context
-6. Be comprehensive and address all aspects of the question
-7. Stay faithful to the context while being helpful and informative
-8. NEVER use template placeholders - provide actual values or clearly state when they're not available
+Provide a clear, well-formatted answer with:
+- Direct response to the question
+- Key details and requirements
+- Important notes if relevant
+
+IMPORTANT FORMATTING:
+- Use bullet points (•) for lists with each bullet on a new line
+- Use bold text (**text**) for important information
+- Add line breaks between sections
+- Structure your response with clear paragraphs
+- Make it easy to read and scan
+- End with "**Sources:**" in bold on a new line
+
+Avoid template placeholders like {{rate}}. Use actual information or say "not specified".
 
 Answer:"""
-
-        return ChatPromptTemplate.from_template(template)
     
     def _create_numerical_context_prompt(self) -> ChatPromptTemplate:
         """Create prompt for numerical data context"""
@@ -118,19 +101,27 @@ Numerical Summary:"""
 
         return ChatPromptTemplate.from_template(template)
     
-    def _create_qa_chain(self) -> None:
-        """Create basic QA chain using modern LCEL"""
-        return self.qa_prompt | self.llm | StrOutputParser()
+    def _create_qa_chain(self):
+        """Create QA chain with comprehensive prompts"""
+        return self.llm
     
-    def _create_qa_with_sources_chain(self) -> None:
-        """Create QA chain with source citation using modern LCEL"""
-        return self.qa_with_sources_prompt | self.llm | StrOutputParser()
+    def _create_qa_with_sources_chain(self):
+        """Create QA with sources chain with comprehensive prompts"""
+        return self.llm
+    
+    def _create_numerical_context_chain(self):
+        """Create numerical context chain"""
+        return self.llm
+    
+    def _create_confidence_chain(self):
+        """Create confidence assessment chain"""
+        return self.llm
     
     def answer_question(self, 
                        question: str, 
                        documents: List[Document],
                        include_sources: bool = True) -> Dict[str, Any]:
-        """Answer a question using retrieved documents"""
+        """Answer question using comprehensive prompts with proper interface"""
         try:
             if not documents:
                 return {
@@ -150,17 +141,14 @@ Numerical Summary:"""
             if numerical_context:
                 full_context += f"\n\nNumerical Data Context:\n{numerical_context}"
             
-            # Generate answer using modern LCEL
+            # Create comprehensive prompt
             if include_sources:
-                response = self.qa_with_sources_chain.invoke({
-                    "context": full_context,
-                    "question": question
-                })
+                prompt = self._create_qa_with_sources_prompt(question, full_context)
             else:
-                response = self.qa_chain.invoke({
-                    "context": full_context,
-                    "question": question
-                })
+                prompt = self._create_qa_prompt(question, full_context)
+            
+            # Generate response using LLM
+            response = self.llm.invoke(prompt)
             
             # Extract sources
             sources = self._extract_sources(documents)
@@ -168,8 +156,8 @@ Numerical Summary:"""
             # Determine confidence based on document relevance
             confidence = self._determine_confidence(documents, question)
             
-            # Clean up any template placeholders that might have slipped through
-            cleaned_response = self._clean_template_placeholders(response)
+            # Clean up any template placeholders
+            cleaned_response = self._clean_template_placeholders(response.content)
             
             return {
                 "answer": cleaned_response,
@@ -187,52 +175,77 @@ Numerical Summary:"""
             }
     
     def _prepare_context(self, documents: List[Document]) -> str:
-        """Prepare context from documents"""
-        context_parts = []
+        """Prepare comprehensive context from documents"""
+        if not documents:
+            return ""
         
-        for i, doc in enumerate(documents):
-            # Add document content with metadata
+        # Sort documents by relevance score if available
+        sorted_docs = sorted(documents, key=lambda x: getattr(x, 'metadata', {}).get('score', 0), reverse=True)
+        
+        context_parts = []
+        max_context_length = 6000  # Increased for more comprehensive context
+        current_length = 0
+        
+        for doc in sorted_docs:
+            # Extract comprehensive information from document
             content = doc.page_content
             metadata = doc.metadata
             
-            # Add metadata info if available
+            # Add metadata information for better context
             metadata_info = []
             if metadata.get('document_type'):
                 metadata_info.append(f"Type: {metadata['document_type']}")
             if metadata.get('category'):
                 metadata_info.append(f"Category: {metadata['category']}")
-            if metadata.get('concept'):
-                metadata_info.append(f"Concept: {metadata['concept']}")
+            if metadata.get('confidence'):
+                metadata_info.append(f"Confidence: {metadata['confidence']}")
             
+            # Create comprehensive document entry
+            doc_entry = f"Document Content:\n{content}"
             if metadata_info:
-                content = f"[{' | '.join(metadata_info)}]\n{content}"
+                doc_entry += f"\nMetadata: {', '.join(metadata_info)}"
             
-            context_parts.append(f"Document {i+1}:\n{content}")
+            # Check if adding this document would exceed context limit
+            if current_length + len(doc_entry) > max_context_length:
+                break
+            
+            context_parts.append(doc_entry)
+            current_length += len(doc_entry)
         
-        return "\n\n".join(context_parts)
+        return "\n\n---\n\n".join(context_parts)
     
     def _extract_numerical_context(self, documents: List[Document]) -> str:
-        """Extract numerical data context from documents"""
+        """Extract comprehensive numerical context from documents"""
         numerical_data = []
         
         for doc in documents:
+            content = doc.page_content
             metadata = doc.metadata
             
-            # Check for numerical data in metadata
-            if metadata.get('value') and metadata.get('unit'):
-                numerical_data.append(f"{metadata['value']} ({metadata['unit']})")
+            # Extract numerical information
+            import re
             
-            # Check for numerical data in content
-            content = doc.page_content.lower()
-            if any(keyword in content for keyword in ['$', 'percent', 'rate', 'amount', 'limit']):
-                # Extract numerical information from content
-                lines = doc.page_content.split('\n')
-                for line in lines:
-                    if any(keyword in line.lower() for keyword in ['$', 'percent', 'rate', 'amount', 'limit']):
-                        numerical_data.append(line.strip())
+            # Find amounts, percentages, dates, etc.
+            amounts = re.findall(r'\$[\d,]+(?:\.\d{2})?', content)
+            percentages = re.findall(r'\d+(?:\.\d+)?%', content)
+            years = re.findall(r'20\d{2}', content)
+            rates = re.findall(r'\d+(?:\.\d+)?%?\s*(?:rate|interest)', content, re.IGNORECASE)
+            
+            if amounts or percentages or years or rates:
+                numerical_entry = f"Document: {metadata.get('document_type', 'Unknown')}"
+                if amounts:
+                    numerical_entry += f"\nAmounts: {', '.join(amounts)}"
+                if percentages:
+                    numerical_entry += f"\nPercentages: {', '.join(percentages)}"
+                if years:
+                    numerical_entry += f"\nYears: {', '.join(years)}"
+                if rates:
+                    numerical_entry += f"\nRates: {', '.join(rates)}"
+                
+                numerical_data.append(numerical_entry)
         
         if numerical_data:
-            return "\n".join(numerical_data[:10])  # Limit to first 10
+            return "Numerical Data Summary:\n" + "\n\n".join(numerical_data)
         return ""
     
     def _extract_sources(self, documents: List[Document]) -> List[Dict[str, Any]]:

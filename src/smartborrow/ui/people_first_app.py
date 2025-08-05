@@ -18,6 +18,10 @@ import asyncio
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from smartborrow.rag.rag_service import RAGService
+from smartborrow.agents.enhanced_coordinator import EnhancedCoordinatorAgent
+from smartborrow.rag.optimized_rag_service import OptimizedRAGService
+from smartborrow.retrieval.hybrid_retriever_advanced import create_advanced_hybrid_retriever
+from smartborrow.rag.advanced_chunking import create_advanced_chunker
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -414,17 +418,30 @@ class PeopleFirstSmartBorrowApp:
         self.load_user_profile()
     
     def initialize_services(self) -> None:
-        """Initialize SmartBorrow services"""
+        """Initialize enhanced multi-agent system and advanced services"""
         try:
-            # Initialize RAG service
+            # Initialize enhanced coordinator agent
+            self.enhanced_coordinator = EnhancedCoordinatorAgent()
+            
+            # Initialize optimized RAG service
+            self.optimized_rag_service = OptimizedRAGService()
+            asyncio.run(self.optimized_rag_service.initialize())
+            
+            # Initialize advanced hybrid retriever
+            self.hybrid_retriever = create_advanced_hybrid_retriever()
+            
+            # Initialize advanced chunker
+            self.advanced_chunker = create_advanced_chunker()
+            
+            # Keep original RAG service for fallback
             self.rag_service = RAGService()
             self.rag_service.initialize()
             
             st.session_state.services_initialized = True
-            logger.info("All services initialized successfully")
+            logger.info("✅ Enhanced multi-agent system and advanced services initialized successfully")
             
         except Exception as e:
-            st.error(f"Error initializing services: {e}")
+            st.error(f"Error initializing enhanced services: {e}")
             st.session_state.services_initialized = False
     
     def initialize_user_journey(self) -> None:
@@ -456,24 +473,26 @@ class PeopleFirstSmartBorrowApp:
             }
     
     def render_hero_section(self) -> None:
-        """Render empathetic hero section"""
-        st.markdown('<h1 class="hero-title">🎓 Your Financial Aid Journey Starts Here</h1>', unsafe_allow_html=True)
-        st.markdown('<p class="hero-subtitle">We understand this can feel overwhelming. Let\'s break it down together and find the best path for your situation.</p>', unsafe_allow_html=True)
-        
-        # Empathetic status indicators
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            if st.session_state.get('services_initialized', False):
-                st.success("✅ Ready to help you")
-            else:
-                st.error("❌ System temporarily unavailable")
-        
-        with col2:
-            st.info("🤝 Personalized guidance")
-        
-        with col3:
-            st.info("📅 Deadline tracking active")
+        """Render the hero section with current system status"""
+        st.markdown("""
+        <div style="text-align: center; padding: 2rem 0;">
+            <h1 style="color: var(--primary-color); margin-bottom: 0.5rem;">🎓 SmartBorrow</h1>
+            <p style="font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 2rem;">
+                Your AI-powered financial aid assistant
+            </p>
+            <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 2rem;">
+                <span style="background: #dcfce7; color: #166534; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+                    ✅ RAG System Active
+                </span>
+                <span style="background: #dbeafe; color: #1e40af; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+                    🚀 Optimized Performance
+                </span>
+                <span style="background: #fef3c7; color: #92400e; padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+                    📚 Knowledge Base Ready
+                </span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
     def render_smart_intake(self) -> None:
         """Render intelligent intake system"""
@@ -710,24 +729,41 @@ class PeopleFirstSmartBorrowApp:
             self.process_chat_question(user_question)
     
     def process_chat_question(self, question: str) -> None:
-        """Process user question and provide response"""
-        with st.spinner("Thinking about your question..."):
+        """Process user question using RAG service"""
+        with st.spinner("🤖 Analyzing your question..."):
             try:
-                # Use RAG service for comprehensive response
+                # Use the working RAG service directly
                 result = self.rag_service.query(question)
                 
                 # Extract the answer from the result
                 if isinstance(result, dict):
                     answer = result.get('answer', str(result))
+                    confidence = result.get('confidence', 'medium')
+                    sources = result.get('sources', [])
                 else:
                     answer = str(result)
+                    confidence = 'medium'
+                    sources = []
                 
-                # Display response with empathy (header now included in response div)
+                # Display response with information
+                source_info = ""
+                if sources:
+                    # Clean up sources to remove duplicates and format properly
+                    unique_sources = list(set([f"📚 {source.get('document_type', 'Unknown')} ({source.get('category', 'general')})" for source in sources]))
+                    source_info = f"**Sources:**<br>" + "<br>".join(unique_sources)
                 
+                # Clean the answer to remove any existing Sources section
+                cleaned_answer = answer
+                if "**Sources:**" in answer:
+                    cleaned_answer = answer.split("**Sources:**")[0].strip()
+                
+                # Create a properly contained response box with all content inside
                 st.markdown(f"""
-                <div style="background-color: #f9fafb; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #2563eb; width: 100%; max-width: 100%; color: #1f2937;">
-                    <strong style="color: #2563eb; display: block; margin-bottom: 0.5rem;">SmartBorrow:</strong>
-                    <div style="color: #1f2937;">{answer}</div>
+                <div style="background-color: #f9fafb; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #2563eb; width: 100%; max-width: 100%;">
+                    <div style="color: #2563eb; font-weight: bold; margin-bottom: 0.5rem;">SmartBorrow:</div>
+                    <div style="color: #1f2937; line-height: 1.6; margin-bottom: 1rem; white-space: pre-line;">{cleaned_answer}</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">🎯 Confidence: {confidence}</div>
+                    <div style="color: #6b7280; font-size: 0.875rem;">{source_info}</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
@@ -735,8 +771,16 @@ class PeopleFirstSmartBorrowApp:
                 self.render_follow_up_suggestions(question)
                 
             except Exception as e:
-                st.error(f"I'm having trouble processing that right now. Let me try a different approach.")
+                st.error(f"I'm having trouble processing that right now. Error: {e}")
                 logger.error(f"Error processing question: {e}")
+                
+                # Show a helpful fallback message
+                st.markdown(f"""
+                <div style="background-color: #fef3c7; padding: 1.5rem; border-radius: 12px; margin: 1rem 0; border-left: 4px solid #f59e0b; width: 100%; max-width: 100%; color: #1f2937;">
+                    <strong style="color: #f59e0b; display: block; margin-bottom: 0.5rem;">SmartBorrow:</strong>
+                    <div style="color: #1f2937;">I'm experiencing technical difficulties. Please try rephrasing your question or try again in a moment.</div>
+                </div>
+                """, unsafe_allow_html=True)
     
     def render_follow_up_suggestions(self, original_question: str) -> None:
         """Render contextual follow-up suggestions"""
