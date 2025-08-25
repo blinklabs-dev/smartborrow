@@ -7,3 +7,4 @@ python-jose[cryptography]
 snowflake-connector-python
 cryptography
 python-multipart
+openai
